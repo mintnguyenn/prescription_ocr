@@ -12,8 +12,7 @@ from pydantic import BaseModel, Field
 # OCR configuration
 DEFAULT_MODEL = "gemini-2.5-flash"
 SUPPORTED_IMG = {".jpg", ".jpeg"}
-OCR_PROMPT    = "OCR this prescription image and accurately " \
-                "extract data into the required structured schema."
+OCR_PROMPT    = "OCR this prescription image and accurately extract data into the required structured schema."
 
 # API retry policy
 ERROR_MAX_RETRIES: dict[int, int] = {
@@ -28,20 +27,22 @@ class PrescriptionRow(BaseModel):
     patient_id:   str = Field(description = "Mã bệnh nhân")
     patient_name: str = Field(description = "Tên bệnh nhân định dạng CamelCase, có dấu tiếng Việt")
     patient_age:  int = Field(description = "Tuổi bệnh nhân dưới dạng số nguyên")
-    issue_date:   str = Field(description = "Ngày ở góc phải bên dưới của toa thuốc. Bắt buộc trả về định dạng D-M-YYYY")
-    doctor_name:  str = Field(description = "Tên bác sĩ ký ở phía dưới toa thuốc")
+    issue_date:   str = Field(description = "Ngày ở góc phải bên dưới của đơn thuốc. Nhắc lại, GÓC PHẢI, BÊN DƯỚI CỦA ĐƠN THUỐC. Bắt buộc trả về định dạng D-M-YYYY")
+    doctor_name:  str = Field(description = "Tên bác sĩ ký ở phía dưới đơn thuốc")
     medication:   str = Field(description = "Bắt buộc định dạng thành 'Tên_Biệt_Dược Hàm_Lượng (Hoạt_Chất)', ví dụ " \
                                             "'Thyroberg 100mcg (Levothyroxin)' hoặc 'APO-Erlotinib 150mg (Erlotinib)'")
-    quantity:     str = Field(description = "Số lượng thuốc được cấp phát, chỉ ghi số")
-    dosage_days:  str = Field(description = "Số ngày sử dụng thuốc, chỉ ghi số")
+    quantity:     str = Field(description = "Số lượng thuốc được cấp phát. Luôn lấy số đứng sau nhãn 'Số lượng:' " \
+                                            "trong cùng dòng/khu vực của thuốc, ví dụ 'Số lượng: 21 Viên' thì trả về '21'")
+    dosage_days:  str = Field(description = "Số ngày sử dụng thuốc, được tính bằng cách lấy tổng số thuốc được cấp phát " \
+                                            "chia cho số thuốc dùng mỗi ngày, chỉ ghi số")
 
-    #
-    is_flagged:  bool = Field(description = "Trả về true nếu số thứ tự của thuốc được khoanh tròn bằng bút trên toa; ngược lại trả về false.")
+    # Optional field for indicating if the medication is chosen on the prescription image
+    is_flagged:  bool = Field(description = "Trả về true nếu số thứ tự của thuốc được khoanh tròn hoặc đánh dấu bằng bút trên đơn thuốc; ngược lại trả về false.")
 
 
 class PrescriptionTable(BaseModel):
     data_rows: list[PrescriptionRow] = Field(
-        description="Danh sách các hàng dữ liệu được bóc tách từ đơn thuốc"
+        description="Danh sách các hàng dữ liệu được trích xuất từ đơn thuốc"
     )
 
 
@@ -71,6 +72,7 @@ def list_image_files(folder_path: str | Path) -> list[Path]:
         logging.warning("Folder /images does not exist")
         return []
 
+    # Return sorted list of image files with supported extensions
     return sorted(path
                   for path in folder.iterdir()
                   if path.is_file() and path.suffix.lower() in SUPPORTED_IMG)

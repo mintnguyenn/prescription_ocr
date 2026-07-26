@@ -30,7 +30,7 @@ BATCH_MARKER_FORMAT = {
 UNFLAGGED_MEDICATION_FORMAT = {
     "backgroundColor": {"red": 0.95, "green": 0.95, "blue": 0.95},
     "textFormat": {
-        "foregroundColor": {"red": 0.45, "green": 0.45, "blue": 0.45},
+        "foregroundColor": {"red": 1.0, "green": 0, "blue": 0},
     },
 }
 
@@ -42,12 +42,9 @@ def get_gspread_client(creds_path: str | Path) -> gspread.Client:
     return gspread.service_account(filename=str(creds_path))
 
 
-def open_worksheet(
-    client: gspread.Client,
-    sheet_id: str,
-    worksheet_name: str = "Sheet1",
-) -> gspread.Worksheet:
+def open_worksheet(client: gspread.Client, sheet_id: str, worksheet_name: str = "Sheet1") -> gspread.Worksheet:
     """Open a worksheet, creating a named worksheet only when it is missing."""
+
     spreadsheet = client.open_by_key(sheet_id)
     if worksheet_name == "Sheet1":
         return spreadsheet.sheet1

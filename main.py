@@ -28,11 +28,13 @@ def main() -> int:
 
     start_time = time.perf_counter()
     try:
+        # Initialize OCR and Google Sheets clients
         ocr = PrescriptionOCR(ocr_client, OUTPUT_DIR)
         sheet_client = get_gspread_client(GSHEET_CREDS_PATH)
         worksheet = open_worksheet(sheet_client, DEFAULT_SHEET_ID, SHEET_NAME)
         sheet_uploader = PrescriptionSheetUploader(worksheet)
 
+        # List images in the /images folder
         images = list_image_files(IMAGES_DIR)
         if not images:
             logging.info("No images found in %s", IMAGES_DIR)
@@ -40,6 +42,7 @@ def main() -> int:
 
         sheet_uploader.upload_batch_marker()
 
+        # Process each image in the batch
         total_images = len(images)
         for image_number, image_path in enumerate(images, start=1):
             print(file=sys.stderr, flush=True)
@@ -69,7 +72,7 @@ def main() -> int:
 
     finally:
         elapsed_seconds = time.perf_counter() - start_time
-        logging.info("Completed after %.1f seconds", elapsed_seconds)
+        logging.info("Batch completed in %.1f seconds", elapsed_seconds)
 
         try:
             ocr_client.close()
