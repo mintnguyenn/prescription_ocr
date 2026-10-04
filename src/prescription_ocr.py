@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 
 # OCR configuration
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.8-flash"
 SUPPORTED_IMG = {".jpg", ".jpeg"}
 OCR_PROMPT    = "OCR this prescription image and accurately extract data into the required structured schema."
 
@@ -33,8 +33,7 @@ class PrescriptionRow(BaseModel):
                                             "'Thyroberg 100mcg (Levothyroxin)' hoặc 'APO-Erlotinib 150mg (Erlotinib)'")
     quantity:     str = Field(description = "Số lượng thuốc được cấp phát. Luôn lấy số đứng sau nhãn 'Số lượng:' " \
                                             "trong cùng dòng/khu vực của thuốc, ví dụ 'Số lượng: 21 Viên' thì trả về '21'")
-    dosage_days:  str = Field(description = "Số ngày sử dụng thuốc, được tính bằng cách lấy tổng số thuốc được cấp phát " \
-                                            "chia cho số thuốc dùng mỗi ngày, chỉ ghi số")
+    dosage_days:  str = Field(description = "Số ngày sử dụng thuốc, được tính bằng cách lấy tổng số thuốc được cấp phát chia cho số thuốc dùng mỗi ngày, chỉ ghi số")
 
     # Optional field for indicating if the medication is chosen on the prescription image
     is_flagged:  bool = Field(description = "Trả về true nếu số thứ tự của thuốc được khoanh tròn hoặc đánh dấu bằng bút trên đơn thuốc; ngược lại trả về false.")
@@ -104,7 +103,10 @@ class PrescriptionOCR:
 
         while True:
             try:
+                start = time.perf_counter()
+                # logging.info(f"[{0:.2f}s] Start request")
                 response = self._generate_ocr_response(image_bytes)
+                logging.info(f"Request finished in [{time.perf_counter() - start:.2f}s]")
                 self._log_token_usage(response, image_path)
                 return response.text or ""
 
@@ -128,6 +130,9 @@ class PrescriptionOCR:
                 response_mime_type="application/json",
                 response_schema=PrescriptionTable,
                 temperature=0.0,
+                thinking_config=types.ThinkingConfig(
+                    thinking_budget=0
+                ),
             ),
         )
 

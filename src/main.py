@@ -5,12 +5,16 @@ from pathlib import Path
 
 from google.genai.errors import APIError
 
-from src.prescription_ocr import (PrescriptionOCR, ResourceExhausted, ServiceUnavailable,
-                                  create_client, list_image_files)
+from src.prescription_ocr import (PrescriptionOCR, ResourceExhausted, ServiceUnavailable, create_client, list_image_files)
+from src.sheet_uploader   import PrescriptionSheetUploader, get_gspread_client, open_worksheet
 
-from src.sheet_uploader import PrescriptionSheetUploader, get_gspread_client, open_worksheet
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s: %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+    ],
+)
 
 IMAGES_DIR = Path("images")
 OUTPUT_DIR = Path("outputs")
@@ -27,6 +31,7 @@ def main() -> int:
         return 1
 
     start_time = time.perf_counter()
+    batch_started = False
     try:
         # Initialize OCR and Google Sheets clients
         ocr = PrescriptionOCR(ocr_client, OUTPUT_DIR)
@@ -37,7 +42,7 @@ def main() -> int:
         # List images in the /images folder
         images = list_image_files(IMAGES_DIR)
         if not images:
-            logging.info("No images found in %s", IMAGES_DIR)
+            logging.error("No images found in /%s", IMAGES_DIR)
             return 0
 
         sheet_uploader.upload_batch_marker()
@@ -50,6 +55,7 @@ def main() -> int:
 
             try:
                 result_path = ocr.process_image(image_path)
+                batch_started = True
 
             except ResourceExhausted:
                 logging.error("Rate limit still exceeded after retries; stopping batch")
@@ -72,7 +78,9 @@ def main() -> int:
 
     finally:
         elapsed_seconds = time.perf_counter() - start_time
-        logging.info("Batch completed in %.1f seconds", elapsed_seconds)
+        if batch_started:
+            print(file=sys.stderr, flush=True)
+            logging.info("===== Batch completed in %.1f seconds =====", elapsed_seconds)
 
         try:
             ocr_client.close()
